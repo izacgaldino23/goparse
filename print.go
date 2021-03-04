@@ -356,22 +356,24 @@ func (p *printer) print(x reflect.Value) {
 	}
 }
 
+// FinalStructure models a base structure
 type FinalStructure struct {
-	corpo  map[string]interface{}
+	body   map[string]interface{}
 	filter FieldFilter
 }
 
+// Generate generates a map of a struct
 func (f *FinalStructure) Generate(x interface{}, filters FieldFilter) {
 	f.filter = filters
-	f.corpo = f.formStructure(reflect.ValueOf(x))
+	f.body = f.formStructure(reflect.ValueOf(x))
 }
 
-func (f *FinalStructure) formStructure(x reflect.Value) (corpo map[string]interface{}) {
-	corpo = make(map[string]interface{})
+func (f *FinalStructure) formStructure(x reflect.Value) (body map[string]interface{}) {
+	body = make(map[string]interface{})
 
 	switch x.Kind() {
 	case reflect.Interface:
-		corpo = f.formStructure(x.Elem())
+		body = f.formStructure(x.Elem())
 
 	case reflect.Map:
 		// p.printf("%s (len = %d) {", x.Type(), x.Len())
@@ -379,37 +381,37 @@ func (f *FinalStructure) formStructure(x reflect.Value) (corpo map[string]interf
 			// p.indent++
 			// p.printf("\n")
 			for _, key := range x.MapKeys() {
-				corpo[key.String()] = x.MapIndex(key)
+				body[key.String()] = x.MapIndex(key)
 			}
 		}
 	case reflect.Ptr:
 		// type-checked ASTs may contain cycles - use ptrmap
 		// to keep track of objects that have been printed
 		// already and print the respective line number instead
-		corpo = f.formStructure(x.Elem())
+		body = f.formStructure(x.Elem())
 	case reflect.Array:
-		key := replace(x.Type().String(), "ast.", "")
+		key := strings.ReplaceAll(x.Type().String(), "ast.", "")
 		interation := make([]interface{}, 0)
 		if x.Len() > 0 {
 			for i, n := 0, x.Len(); i < n; i++ {
 				interation = append(interation, f.formStructure(x.Index(i)))
 			}
 		}
-		corpo[key] = interation
+		body[key] = interation
 	case reflect.Slice:
-		key := replace(x.Type().String(), "ast.", "")
+		key := strings.ReplaceAll(x.Type().String(), "ast.", "")
 		interation := make([]interface{}, 0)
 		if x.Len() > 0 {
 			for i, n := 0, x.Len(); i < n; i++ {
 				interation = append(interation, f.formStructure(x.Index(i)))
 			}
 		}
-		corpo[key] = interation
+		body[key] = interation
 	case reflect.Struct:
 		t := x.Type()
 		delete(UnusedTypes, t.Name())
 
-		key := replace(x.Type().String(), "ast.", "")
+		key := strings.ReplaceAll(x.Type().String(), "ast.", "")
 		fields := make(map[string]interface{})
 
 		first := true
@@ -422,31 +424,23 @@ func (f *FinalStructure) formStructure(x reflect.Value) (corpo map[string]interf
 					if first {
 						first = false
 					}
-					// p.printf("%s: ", name)
 					fields[key+"."+name] = f.formStructure(value)
 				}
 			}
 		}
-		corpo = fields
+		body = fields
 	default:
 		v := x.Interface()
-		key := replace(x.Type().String(), "ast.", "")
+		key := strings.ReplaceAll(x.Type().String(), "ast.", "")
 		switch v := v.(type) {
 		case string:
-			// print strings in quotes
-			corpo[key] = v
+			body[key] = v
 		case token.Token:
-			corpo[key] = fmt.Sprintf("token.%v", tokenString(v))
+			body[key] = fmt.Sprintf("token.%v", tokenString(v))
 		default:
-			corpo[key] = fmt.Sprintf("%v", v)
+			body[key] = fmt.Sprintf("%v", v)
 		}
 	}
-
-	return
-}
-
-func replace(src, old, replace string) (new string) {
-	new = strings.ReplaceAll(src, old, replace)
 
 	return
 }
