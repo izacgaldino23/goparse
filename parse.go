@@ -1,90 +1,98 @@
 package main
 
 import (
-	"reflect"
-	"text/template"
-	"text/template/parse"
-
-	"github.com/gopherjs/gopherjs/js"
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"go/parser"
+	"go/token"
 )
 
-func format(node parse.Node) map[string]interface{} {
-	if reflect.ValueOf(node).IsNil() {
-		return nil
-	}
-
-	m := map[string]interface{}{
-		"type": reflect.ValueOf(node).Type().Elem().Name(),
-		"pos":  node.Position(),
-	}
-
-	switch node := node.(type) {
-	case *parse.ActionNode:
-		m["pipe"] = format(node.Pipe)
-	case *parse.BoolNode:
-		m["true"] = node.True
-	case *parse.ChainNode:
-		m["field"] = node.Field
-	case *parse.CommandNode:
-		args := []interface{}{}
-		for _, n := range node.Args {
-			args = append(args, format(n))
-		}
-		m["args"] = args
-	case *parse.DotNode:
-	case *parse.FieldNode:
-		m["ident"] = node.Ident
-	case *parse.IdentifierNode:
-		m["ident"] = node.Ident
-	case *parse.IfNode:
-		m["pipe"] = format(node.Pipe)
-		m["list"] = format(node.List)
-		m["elseList"] = format(node.ElseList)
-	case *parse.ListNode:
-		nodes := []interface{}{}
-		for _, n := range node.Nodes {
-			nodes = append(nodes, format(n))
-		}
-		m["nodes"] = nodes
-	case *parse.NilNode:
-	case *parse.NumberNode:
-		m["value"] = node.String()
-	case *parse.PipeNode:
-		cmds := []interface{}{}
-		for _, n := range node.Cmds {
-			cmds = append(cmds, format(n))
-		}
-		m["cmds"] = cmds
-		decl := []interface{}{}
-		for _, n := range node.Decl {
-			decl = append(decl, format(n))
-		}
-		m["decl"] = decl
-	case *parse.RangeNode:
-		m["pipe"] = format(node.Pipe)
-		m["list"] = format(node.List)
-		m["elseList"] = format(node.ElseList)
-	case *parse.StringNode:
-		m["text"] = node.Text
-	case *parse.TemplateNode:
-		m["name"] = node.Name
-		m["pipe"] = format(node.Pipe)
-	case *parse.TextNode:
-		m["text"] = string(node.Text)
-	case *parse.VariableNode:
-		m["ident"] = node.Ident
-	case *parse.WithNode:
-		m["pipe"] = format(node.Pipe)
-		m["list"] = format(node.List)
-		m["elseList"] = format(node.ElseList)
-	}
-	return m
+type funcao struct {
+	nome       string
+	retornos   []parametro
+	parametros []parametro
 }
 
-func Parse(input string) interface{} {
-	return format(template.Must(template.New("").Parse(input)).Root)
+type parametro struct {
+	nome string
+	tipo string
+}
+
+func formatar(codigo string) interface{} {
+	var (
+		erro error
+		b    bytes.Buffer
+		// funcoes = make([]funcao, 0)
+	)
+
+	fset := token.NewFileSet()
+	filters := AppendFilters(PosFilter, KeywordFilter, ZeroFilter)
+
+	expr, erro := parser.ParseExpr(codigo)
+	if erro == nil {
+		erro = Fprint(&b, fset, expr, filters)
+		// fmt.Println(erro)
+		// fmt.Println("teste")
+		return b.String()
+	}
+
+	f, erro := parser.ParseFile(fset, "", codigo, parser.ParseComments)
+	if erro != nil {
+		// fmt.Println(erro)
+		// panic(erro)
+	}
+
+	erro = Fprint(&b, fset, f.Decls, filters)
+	if erro != nil {
+		// fmt.Println(erro)
+		// panic(erro)
+	}
+
+	estrutura := new(FinalStructure)
+
+	estrutura.Generate(f.Decls, filters)
+
+	// v, erro := tahwil.ToValue(f)
+	// if erro != nil {
+	// 	fmt.Println(erro)
+	// 	panic(erro)
+	// }
+
+	res, err := json.Marshal(estrutura.corpo)
+	if err != nil {
+		panic(err)
+	}
+
+	// fmt.Println(b.String())
+	fmt.Println(string(res))
+
+	// fmt.Println(json.Marshal(f))
+	// fmt.Println(b.String())
+
+	// var temp interface{}
+	// if erro = json.Unmarshal(b.Bytes(), &temp); erro != nil {
+	// 	fmt.Println(erro)
+	// 	panic(erro)
+	// }
+	// fmt.Println(temp)
+
+	return string(res)
+}
+
+// Parse asdfsadf asdf
+func Parse(codigo string) interface{} {
+	return formatar(codigo)
 }
 
 func main() {
-	js.Module.Set("exports", Parse)
+	Parse(`package main
+
+	import "fmt"
+
+	func foo(name, address string, idade int64) error {
+		fmt.Println("Hello, World!")
+		return nil
+	}`)
+	// js.Module.Get("exports").Set("Parse", Parse)
 }

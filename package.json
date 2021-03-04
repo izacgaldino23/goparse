@@ -1,13 +1,23 @@
 {
-  "name": "go-template-parser",
+  "name": "goparse",
   "version": "1.0.0",
-  "description": "Parse Go templates into an AST",
-  "main": "index.js",
-  "repository": "https://github.com/bouk/go-template-parser",
-  "author": "Bouke van der Bijl",
-  "license": "MIT",
+  "description": "",
+  "main": "parse.js",
   "scripts": {
-    "build": "gopherjs build parse.go -m -o index.js",
-    "test": "node test.js"
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bouk/go-template-parser.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/bouk/go-template-parser/issues"
+  },
+  "homepage": "https://github.com/bouk/go-template-parser#readme",
+  "dependencies": {
+    "source-map-support": "^0.5.19"
   }
 }
